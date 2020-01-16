@@ -1,10 +1,11 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from operations import *
-from torch.autograd import Variable
 from genotypes import PRIMITIVES
 from genotypes import Genotype
+from torch.autograd import Variable
 
 def channel_shuffle(x, groups):
     batchsize, num_channels, height, width = x.data.size()
@@ -41,6 +42,7 @@ class MixedOp(nn.Module):
     dim_2 = x.shape[1]
     xtemp = x[ : , :  dim_2//4, :, :]
     xtemp2 = x[ : ,  dim_2//4:, :, :]
+    # temp1 = sum(w.to(xtemp.device) * op(xtemp) for w, op in zip(weights, self._ops))
     temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
     #reduction cell needs pooling before concat
     if temp1.shape[2] == x.shape[2]:
@@ -82,7 +84,8 @@ class Cell(nn.Module):
     states = [s0, s1]
     offset = 0
     for i in range(self._steps):
-      s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+      # s = sum(weights2[offset+j].to(self._ops[offset+j](h, weights[offset+j]).device) *self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+      s = sum(weights2[offset+j] *self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
       offset += len(states)
       states.append(s)
 
@@ -168,11 +171,20 @@ class Network(nn.Module):
   def _initialize_alphas(self):
     k = sum(1 for i in range(self._steps) for n in range(2+i))
     num_ops = len(PRIMITIVES)
+    self.alphas_normal = nn.Parameter(1e-3*torch.randn(k, num_ops))
+    self.alphas_reduce = nn.Parameter(1e-3*torch.randn(k, num_ops))
+    self.betas_normal = nn.Parameter(1e-3*torch.randn(k))
+    self.betas_reduce = nn.Parameter(1e-3*torch.randn(k))
 
-    self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-    self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-    self.betas_normal = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
-    self.betas_reduce = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
+    # self.alphas_normal = torch.tensor(1e-3*torch.randn(k, num_ops,requires_grad=True).cuda())
+    # self.alphas_reduce = torch.tensor(1e-3*torch.randn(k, num_ops,requires_grad=True).cuda())
+    # self.betas_normal = torch.tensor(1e-3*torch.randn(k,requires_grad=True).cuda())
+    # self.betas_reduce = torch.tensor(1e-3*torch.randn(k,requires_grad=True).cuda())
+
+    # self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+    # self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+    # self.betas_normal = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
+    # self.betas_reduce = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)    
     self._arch_parameters = [
       self.alphas_normal,
       self.alphas_reduce,
@@ -180,8 +192,18 @@ class Network(nn.Module):
       self.betas_reduce,
     ]
 
+
+
   def arch_parameters(self):
     return self._arch_parameters
+
+  def network_parameters(self):
+    self._network_parameters = []
+    for k, v in self.named_parameters():
+        if not (k.endswith('alphas_normal') or k.endswith('alphas_reduce') 
+        or k.endswith('betas_normal') or k.endswith('betas_reduce')):
+            self._network_parameters.append(v)    
+    return self._network_parameters 
 
   def genotype(self):
 
@@ -208,6 +230,8 @@ class Network(nn.Module):
         start = end
         n += 1
       return gene
+
+
     n = 3
     start = 2
     weightsr2 = F.softmax(self.betas_reduce[0:2], dim=-1)

@@ -8,8 +8,7 @@
 
 **This code is based on the implementation of  [DARTS](https://github.com/quark0/darts).**
 ## Updates
-- The implementation of random sampling is also uploaded for your consideration.
-- The main file for search on ImageNet has been uploaded `train_search_imagenet.py`.
+The implementation of random sampling is also uploaded for your consideration.
 
 ## Results
 ### Results on CIFAR10
@@ -34,29 +33,18 @@ PC-DARTS | 597 | **24.2** | **7.3** | 3.8
 
 Search a good arcitecture on ImageNet by using the search space of DARTS(**First Time!**).
 ## Usage
-#### Search on CIFAR10
 
-To run our code, you only need one Nvidia 1080ti(11G memory).
+To run our code based on Pytorch 1.0 and Python3, you only need one Nvidia 1080ti(11G memory), search on cifar10/cifar100.
 ```
 python train_search.py \\
 ```
-#### Search on ImageNet
 
-Data preparation: 10% and 2.5% images need to be random sampled prior from earch class of trainingset as train and val, respectively. The sampled data is save into `./imagenet_search`.
-Note that not to use torch.utils.data.sampler.SubsetRandomSampler for data sampling as imagenet is too large.
-```
-python train_search_imagenet.py \\
-       --tmp_data_dir /path/to/your/sampled/data \\
-       --save log_path \\
-```
 #### The evaluation process simply follows that of DARTS.
 
-##### Here is the evaluation on CIFAR10:
+##### Here is the evaluation on CIFAR10/CIFAR100:
 
 ```
-python train.py \\
-       --auxiliary \\
-       --cutout \\
+python train_cifar.py  --set cifar10 --auxiliary --cutout 
 ```
 
 ##### Here is the evaluation on ImageNet (mobile setting):
@@ -71,7 +59,7 @@ python train_imagenet.py \\
 Coming soon!.
 
 ## Notes
-- For the codes in the main branch, `python2 with pytorch(3.0.1)` is recommended （running on `Nvidia 1080ti`）. We also provided codes in the `V100_python1.0` if you want to implement PC-DARTS on `Tesla V100` with `python3+` and `pytorch1.0+`.
+- All codes with `python3+` and `pytorch1.0+`.
 
 - You can even run the codes on a GPU with memory only **4G**. PC-DARTS only costs less than 4G memory, if we use the same hyper-parameter settings as DARTS(batch-size=64).
 

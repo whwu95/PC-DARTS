@@ -3,29 +3,28 @@ import sys
 import numpy as np
 import time
 import torch
-import utils
 import glob
-import random
+import utils
 import logging
 import argparse
 import torch.nn as nn
 import genotypes
 import torch.utils
 import torchvision.datasets as dset
-import torchvision.transforms as transforms
 import torch.backends.cudnn as cudnn
 
-from torch.autograd import Variable
+import torchvision.transforms as transforms
 from model import NetworkImageNet as Network
 
 
-parser = argparse.ArgumentParser("training imagenet")
-parser.add_argument('--workers', type=int, default=32, help='number of workers to load dataset')
-parser.add_argument('--batch_size', type=int, default=256, help='batch size')
+parser = argparse.ArgumentParser("training imagenet for evaluation")
+parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',help='number of data loading workers (default: 4)')
+parser.add_argument('-b','--batch_size', type=int, metavar='N',default=256, help='batch size')
 parser.add_argument('--learning_rate', type=float, default=0.1, help='init learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-5, help='weight decay')
 parser.add_argument('--report_freq', type=float, default=100, help='report frequency')
+parser.add_argument('--gpus', type=str,default="4,5,6,7",help="define gpu id")
 parser.add_argument('--epochs', type=int, default=250, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=48, help='num of init channels')
 parser.add_argument('--layers', type=int, default=14, help='total number of layers')
@@ -72,6 +71,7 @@ class CrossEntropyLabelSmooth(nn.Module):
         return loss
 
 def main():
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
     if not torch.cuda.is_available():
         logging.info('No GPU device available')
         sys.exit(1)
